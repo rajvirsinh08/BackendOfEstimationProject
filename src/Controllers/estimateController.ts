@@ -71,42 +71,6 @@ export const getAllEstimates = async (req: Request, res: Response): Promise<void
   }
 };
 // 🔵 Approve or Decline Estimate (Admin Only)
-// export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-//   try {
-//     const { estimateId } = req.params;
-//     const { status } = req.body; // expected: "Approved" or "Rejected"
-
-//     // Validate status
-//     if (!["Approved", "Rejected"].includes(status)) {
-//       res.status(400).json({
-//         success: false,
-//         message: "Invalid status value. Must be 'Approved' or 'Rejected'.",
-//       });
-//       return;
-//     }
-
-//     // Find estimate
-//     const estimate = await Estimate.findById(estimateId);
-//     if (!estimate) {
-//       res.status(404).json({ success: false, message: "Estimate not found." });
-//       return;
-//     }
-
-//     // Update fields
-//     estimate.status = status;
-//     estimate.approvedBy = req.user?.email || "Admin";
-//     await estimate.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: `Estimate ${status.toLowerCase()} successfully.`,
-//       data: estimate,
-//     });
-//   } catch (error) {
-//     console.error("Error updating estimate status:", error);
-//     res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
 export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { estimateId } = req.params;
