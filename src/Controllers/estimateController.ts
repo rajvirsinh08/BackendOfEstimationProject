@@ -80,6 +80,31 @@ export const getAllEstimates = async (req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+export const getDeveloperEstimates = async (
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const developerId = req.user?.id || req.user?._id;
+
+    if (!developerId) {
+      res.status(400).json({ success: false, message: "Developer ID not found in token" });
+      return;
+    }
+
+
+    const estimates = await Estimate.find({ developerId }).sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: estimates });
+  } catch (error) {
+    console.error("Error fetching developer estimates:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+
+
 // // 🔵 Approve or Decline Estimate (Admin Only)
 export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
