@@ -12,12 +12,12 @@ export const addEstimate = async (req: AuthenticatedRequest, res: Response): Pro
       projectType,
       description,
       techStack,
-      features,
-      totalScreens,
-      estimatedDays,
+      clientName,
+      costType,
+      estimatedHours,
+      hourlyCost,
       totalCost,
-      startDate,
-      endDate,
+      dueDate,
       additionalNotes,
       attachments,
     } = req.body;
@@ -30,17 +30,27 @@ export const addEstimate = async (req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
+    // 🧮 Auto-calculate totalCost if costType is "Hourly"
+    let finalTotalCost = totalCost;
+    if (costType === "Hourly") {
+      if (!estimatedHours || !hourlyCost) {
+        res.status(400).json({ success: false, message: "Please provide estimated hours and hourly cost" });
+        return;
+      }
+      finalTotalCost = estimatedHours * hourlyCost;
+    }
+
     const newEstimate = new Estimate({
       projectName,
       projectType,
       description,
       techStack,
-      features,
-      totalScreens,
-      estimatedDays,
-      totalCost,
-      startDate,
-      endDate,
+      clientName,
+      costType,
+      estimatedHours,
+      hourlyCost,
+      totalCost: finalTotalCost,
+      dueDate,
       additionalNotes,
       attachments,
       createdBy,
@@ -70,16 +80,16 @@ export const getAllEstimates = async (req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-// 🔵 Approve or Decline Estimate (Admin Only)
+// // 🔵 Approve or Decline Estimate (Admin Only)
 export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { estimateId } = req.params;
-    const { status, declineReason } = req.body; // 🟢 include reason
+    const { status, adminComment } = req.body;
 
-    if (!["Approved", "Rejected"].includes(status)) {
+    if (!["Approved", "Declined", "ReEdit"].includes(status)) {
       res.status(400).json({
         success: false,
-        message: "Invalid status value. Must be 'Approved' or 'Rejected'.",
+        message: "Invalid status. Must be 'Approved', 'Declined', or 'ReEdit'.",
       });
       return;
     }
@@ -93,16 +103,21 @@ export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Respo
     estimate.status = status;
     estimate.approvedBy = req.user?.email || "Admin";
 
-    // 🟢 Save reason only when declined
-    if (status === "Rejected") {
-      if (!declineReason || declineReason.trim() === "") {
+    // 🟢 ReEdit requires admin comment
+    if (status === "ReEdit") {
+      if (!adminComment || adminComment.trim() === "") {
         res.status(400).json({
           success: false,
-          message: "Decline reason is required when rejecting an estimate.",
+          message: "Admin comment is required for ReEdit.",
         });
         return;
       }
-      estimate.declineReason = declineReason;
+      estimate.adminComment = adminComment;
+    }
+
+    // 🟠 Declined → clear any old comments
+    if (status === "Declined") {
+      estimate.adminComment = "";
     }
 
     await estimate.save();
@@ -114,6 +129,80 @@ export const updateEstimateStatus = async (req: AuthenticatedRequest, res: Respo
     });
   } catch (error) {
     console.error("Error updating estimate status:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// 🟢 Update all fields of an Estimate (Developer or Admin)
+export const updateEstimateById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { estimateId } = req.params;
+
+    const {
+      projectName,
+      projectType,
+      description,
+      techStack,
+      clientName,
+      costType,
+      estimatedHours,
+      hourlyCost,
+      totalCost,
+      dueDate,
+      additionalNotes,
+      attachments,
+    } = req.body;
+
+    const developerId = req.user?.id;
+
+    if (!developerId) {
+      res.status(401).json({ success: false, message: "Unauthorized: Missing developer ID" });
+      return;
+    }
+
+    const estimate = await Estimate.findById(estimateId);
+    if (!estimate) {
+      res.status(404).json({ success: false, message: "Estimate not found." });
+      return;
+    }
+
+    // 🧮 Recalculate total cost if costType = "Hourly"
+    let finalTotalCost = totalCost;
+    if (costType === "Hourly") {
+      if (!estimatedHours || !hourlyCost) {
+        res.status(400).json({
+          success: false,
+          message: "Please provide estimated hours and hourly cost.",
+        });
+        return;
+      }
+      finalTotalCost = estimatedHours * hourlyCost;
+    }
+
+    // 📝 Update all fields
+    estimate.projectName = projectName || estimate.projectName;
+    estimate.projectType = projectType || estimate.projectType;
+    estimate.description = description || estimate.description;
+    estimate.techStack = techStack || estimate.techStack;
+    estimate.clientName = clientName || estimate.clientName;
+    estimate.costType = costType || estimate.costType;
+    estimate.estimatedHours = estimatedHours ?? estimate.estimatedHours;
+    estimate.hourlyCost = hourlyCost ?? estimate.hourlyCost;
+    estimate.totalCost = finalTotalCost ?? estimate.totalCost;
+    estimate.dueDate = dueDate || estimate.dueDate;
+    estimate.additionalNotes = additionalNotes || estimate.additionalNotes;
+    estimate.attachments = attachments || estimate.attachments;
+    estimate.status = "Pending"; // Reset to pending if re-edited
+
+    const updatedEstimate = await estimate.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Estimate updated successfully.",
+      data: updatedEstimate,
+    });
+  } catch (error) {
+    console.error("Error updating estimate:", error);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
