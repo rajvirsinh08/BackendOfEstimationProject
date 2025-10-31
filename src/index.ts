@@ -64,7 +64,7 @@ app.use(bodyParser.json());
 app.use("/api/users", userRoutes);
 app.use("/api/estimate", estimateRoute);
 
-// Root test route
+// Root route
 app.get("/", (req: Request, res: Response) => {
   res.send("✅ Backend is live on Vercel!");
 });
@@ -79,7 +79,6 @@ if (!cached) {
 
 async function connectToDatabase() {
   if (cached.conn) return cached.conn;
-
   if (!cached.promise) {
     const opts = { bufferCommands: false };
     cached.promise = mongoose
@@ -91,28 +90,19 @@ async function connectToDatabase() {
 }
 
 // -----------------------------
-// Local development mode
+// Local development (only runs on localhost)
 // -----------------------------
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
-  connectToDatabase()
-    .then(() => {
-      app.listen(PORT, () => {
-        console.log(`✅ Server running locally on port ${PORT}`);
-      });
-    })
-    .catch((err) => console.error("❌ MongoDB connection failed:", err));
+  connectToDatabase().then(() => {
+    app.listen(PORT, () => console.log(`✅ Local server on port ${PORT}`));
+  });
 }
 
 // -----------------------------
-// Serverless handler for Vercel
+// Vercel Serverless Export
 // -----------------------------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  try {
-    await connectToDatabase(); // ensure DB connection
-    app(req, res); // forward request to Express
-  } catch (err) {
-    console.error("❌ Database connection error:", err);
-    res.status(500).json({ error: "Database connection failed" });
-  }
+  await connectToDatabase();
+  return app(req, res);
 }
