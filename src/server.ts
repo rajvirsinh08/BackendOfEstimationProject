@@ -1,3 +1,61 @@
+// import express from "express";
+// import mongoose from "mongoose";
+// import bodyParser from "body-parser";
+// import cors from "cors";
+// import dotenv from "dotenv";
+// import userRoutes from "./Routes/userRoutes";
+// import estimateRoute from "./Routes/estimateRoutes";
+
+// // Load environment variables
+// dotenv.config();
+
+// const app = express();
+
+// // Middleware setup
+// app.use(bodyParser.json());
+// app.use(
+//   cors({
+//     origin: "*",
+//     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//   })
+// );
+
+// // Default route
+// app.get("/", (req, res) => {
+//   res.status(200).send("🚀 Backend API is running successfully!");
+// });
+
+// // Routes
+// app.use("/api/users", userRoutes);
+// app.use("/api/estimate", estimateRoute);
+
+// // MongoDB Connection
+// const MONGO_URI = process.env.MONGO_URI as string;
+
+// if (!MONGO_URI) {
+//   console.error("❌ MongoDB connection string is missing in .env file.");
+//   process.exit(1);
+// }
+
+// mongoose
+//   .connect(MONGO_URI)
+//   .then(() => console.log("✅ MongoDB connected successfully"))
+//   .catch((err) => {
+//     console.error("❌ MongoDB connection failed:", err.message);
+//     process.exit(1);
+//   });
+
+// // Local development server
+// if (process.env.NODE_ENV !== "production") {
+//   const PORT = process.env.PORT || 5000;
+//   app.listen(PORT, () => {
+//     console.log(`🚀 Server running locally on port ${PORT}`);
+//   });
+// }
+
+// // Export app for Vercel
+// export default app;
 import express from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
@@ -6,13 +64,11 @@ import dotenv from "dotenv";
 import userRoutes from "./Routes/userRoutes";
 import estimateRoute from "./Routes/estimateRoutes";
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Middleware setup
-app.use(bodyParser.json());
+// ✅ Enable CORS
 app.use(
   cors({
     origin: "*",
@@ -21,16 +77,19 @@ app.use(
   })
 );
 
+// ⚠️ IMPORTANT: Don't parse body globally before multer routes
+// Only apply JSON parsing to routes that do NOT need multer
+app.use("/api/users", bodyParser.json(), userRoutes);
+
+// ✅ Mount estimate routes without body-parser interference
+app.use("/api/estimate", estimateRoute);
+
 // Default route
 app.get("/", (req, res) => {
   res.status(200).send("🚀 Backend API is running successfully!");
 });
 
-// Routes
-app.use("/api/users", userRoutes);
-app.use("/api/estimate", estimateRoute);
-
-// MongoDB Connection
+// ✅ MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI as string;
 
 if (!MONGO_URI) {
@@ -46,7 +105,7 @@ mongoose
     process.exit(1);
   });
 
-// Local development server
+// ✅ Local dev server (ignored by Vercel)
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
@@ -54,5 +113,5 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// Export app for Vercel
+// ✅ Export app for Vercel
 export default app;
