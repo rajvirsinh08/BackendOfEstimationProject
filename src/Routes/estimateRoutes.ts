@@ -49,6 +49,7 @@ router.patch("/payment-request/:estimateId", verifyToken, requestPayment);
 router.patch("/forward-payment/:estimateId", verifyToken, forwardPaymentToAccountant);
 
 // ✅ File upload route (multer + verifyToken)
-router.post("/payment/:estimateId", verifyToken, upload.single("file"), completePayment);
+// router.post("/payment/:estimateId", verifyToken, upload.single("file"), completePayment);
+router.post("/payment/:estimateId", verifyToken, upload.any(), completePayment);
 
 export default router;

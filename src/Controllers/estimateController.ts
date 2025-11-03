@@ -412,14 +412,136 @@ export const forwardPaymentToAccountant = async (
 };
 
 
+// export const completePayment = async (req: AuthenticatedRequest, res: Response) => {
+//   try {
+//     const { estimateId } = req.params;
+//     const accountantEmail = req.user?.email;
+//     const file = req.file;
+
+//     if (!file) {
+//       return res.status(400).json({ success: false, message: "Payment proof image is required" });
+//     }
+
+//     const estimate = await Estimate.findById(estimateId);
+//     if (!estimate) {
+//       return res.status(404).json({ success: false, message: "Estimate not found" });
+//     }
+
+//     if (estimate.paymentRequest !== "RequestToAccountant") {
+//       return res.status(400).json({ success: false, message: "Not ready for accountant payment" });
+//     }
+
+//     // ✅ Upload proof image directly from memory
+//     const paymentImageUrl = await uploadToVercelBlob(file.originalname, file.buffer);
+
+// //     // ✅ Generate PDF Receipt (in-memory)
+// //     const doc = new PDFDocument({ margin: 30 });
+// //     const pdfBufferStream = new streamBuffers.WritableStreamBuffer();
+
+// //     doc.pipe(pdfBufferStream);
+
+// //     doc.fontSize(18).text("Project Payment Receipt", { align: "center" });
+// //     doc.moveDown();
+// //     doc.fontSize(12).text(`Project Name: ${estimate.projectName}`);
+// //     doc.text(`Client Name: ${estimate.clientName}`);
+// //     doc.text(`Project Type: ${estimate.projectType}`);
+// //     doc.text(`Tech Stack: ${estimate.techStack}`);
+// //     doc.text(`Total Cost: ₹${estimate.totalCost}`);
+// //     doc.text(`Paid By: ${accountantEmail}`);
+// //     doc.text(`Payment Date: ${new Date().toLocaleString()}`);
+// //     doc.end();
+
+// //     await new Promise(resolve => doc.on("end", resolve));
+
+// //     // const pdfBuffer = pdfBufferStream.getContents();
+
+// //     // // ✅ Upload PDF directly to Vercel Blob
+// //     // const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
+// // const pdfBuffer = pdfBufferStream.getContents();
+
+// // if (!pdfBuffer) {
+// //   return res.status(500).json({
+// //     success: false,
+// //     message: "Failed to generate PDF buffer",
+// //   });
+// // }
+
+// // // ✅ Upload PDF directly to Vercel Blob
+// // const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
+// // ✅ Generate PDF Receipt (in-memory)
+// const doc = new PDFDocument({ margin: 30 });
+// const pdfBufferStream = new streamBuffers.WritableStreamBuffer();
+
+// doc.pipe(pdfBufferStream);
+
+// doc.fontSize(18).text("Project Payment Receipt", { align: "center" });
+// doc.moveDown();
+// doc.fontSize(12).text(`Project Name: ${estimate.projectName}`);
+// doc.text(`Client Name: ${estimate.clientName}`);
+// doc.text(`Project Type: ${estimate.projectType}`);
+// doc.text(`Tech Stack: ${estimate.techStack}`);
+// doc.text(`Total Cost: ₹${estimate.totalCost}`);
+// doc.text(`Paid By: ${accountantEmail}`);
+// doc.text(`Payment Date: ${new Date().toLocaleString()}`);
+
+// doc.moveDown();
+
+// // ✅ Add image from memory (Multer buffer)
+// doc.fontSize(14).text("Payment Proof Image:", { underline: true });
+// doc.moveDown(0.5);
+// doc.image(file.buffer, {
+//   fit: [250, 250],
+//   align: "center",
+//   valign: "center",
+//   // format: 'png' // optional if needed
+// });
+
+// doc.end();
+
+// await new Promise((resolve) => doc.on("end", resolve));
+
+// const pdfBuffer = pdfBufferStream.getContents();
+// if (!pdfBuffer) {
+//   return res.status(500).json({
+//     success: false,
+//     message: "Failed to generate PDF buffer",
+//   });
+// }
+
+// // ✅ Upload PDF directly to Vercel Blob
+// const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
+
+//     // ✅ Update DB
+//     estimate.paymentImage = paymentImageUrl;
+//     estimate.paymentPdf = pdfUrl;
+//     estimate.paidBy = accountantEmail;
+//     estimate.paymentDate = new Date();
+//     estimate.paymentRequest = "PaymentDone";
+//     await estimate.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Payment completed and receipt generated successfully.",
+//       data: estimate,
+//     });
+//   } catch (error) {
+//     console.error("Error completing payment:", error);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
 export const completePayment = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { estimateId } = req.params;
     const accountantEmail = req.user?.email;
-    const file = req.file;
+
+    const file = Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null;
 
     if (!file) {
-      return res.status(400).json({ success: false, message: "Payment proof image is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Payment proof image is required",
+      });
     }
 
     const estimate = await Estimate.findById(estimateId);
@@ -431,85 +553,37 @@ export const completePayment = async (req: AuthenticatedRequest, res: Response) 
       return res.status(400).json({ success: false, message: "Not ready for accountant payment" });
     }
 
-    // ✅ Upload proof image directly from memory
+    // ✅ Upload proof image from memory
     const paymentImageUrl = await uploadToVercelBlob(file.originalname, file.buffer);
 
-//     // ✅ Generate PDF Receipt (in-memory)
-//     const doc = new PDFDocument({ margin: 30 });
-//     const pdfBufferStream = new streamBuffers.WritableStreamBuffer();
+    // ✅ Generate PDF receipt (same as before)
+    const doc = new PDFDocument({ margin: 30 });
+    const pdfBufferStream = new streamBuffers.WritableStreamBuffer();
 
-//     doc.pipe(pdfBufferStream);
+    doc.pipe(pdfBufferStream);
+    doc.fontSize(18).text("Project Payment Receipt", { align: "center" }).moveDown();
+    doc.fontSize(12).text(`Project Name: ${estimate.projectName}`);
+    doc.text(`Client Name: ${estimate.clientName}`);
+    doc.text(`Project Type: ${estimate.projectType}`);
+    doc.text(`Tech Stack: ${estimate.techStack}`);
+    doc.text(`Total Cost: ₹${estimate.totalCost}`);
+    doc.text(`Paid By: ${accountantEmail}`);
+    doc.text(`Payment Date: ${new Date().toLocaleString()}`);
+    doc.moveDown().fontSize(14).text("Payment Proof Image:", { underline: true }).moveDown(0.5);
+    doc.image(file.buffer, { fit: [250, 250], align: "center", valign: "center" });
+    doc.end();
 
-//     doc.fontSize(18).text("Project Payment Receipt", { align: "center" });
-//     doc.moveDown();
-//     doc.fontSize(12).text(`Project Name: ${estimate.projectName}`);
-//     doc.text(`Client Name: ${estimate.clientName}`);
-//     doc.text(`Project Type: ${estimate.projectType}`);
-//     doc.text(`Tech Stack: ${estimate.techStack}`);
-//     doc.text(`Total Cost: ₹${estimate.totalCost}`);
-//     doc.text(`Paid By: ${accountantEmail}`);
-//     doc.text(`Payment Date: ${new Date().toLocaleString()}`);
-//     doc.end();
+    await new Promise((resolve) => doc.on("end", resolve));
+    const pdfBuffer = pdfBufferStream.getContents();
 
-//     await new Promise(resolve => doc.on("end", resolve));
+    if (!pdfBuffer) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate PDF buffer",
+      });
+    }
 
-//     // const pdfBuffer = pdfBufferStream.getContents();
-
-//     // // ✅ Upload PDF directly to Vercel Blob
-//     // const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
-// const pdfBuffer = pdfBufferStream.getContents();
-
-// if (!pdfBuffer) {
-//   return res.status(500).json({
-//     success: false,
-//     message: "Failed to generate PDF buffer",
-//   });
-// }
-
-// // ✅ Upload PDF directly to Vercel Blob
-// const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
-// ✅ Generate PDF Receipt (in-memory)
-const doc = new PDFDocument({ margin: 30 });
-const pdfBufferStream = new streamBuffers.WritableStreamBuffer();
-
-doc.pipe(pdfBufferStream);
-
-doc.fontSize(18).text("Project Payment Receipt", { align: "center" });
-doc.moveDown();
-doc.fontSize(12).text(`Project Name: ${estimate.projectName}`);
-doc.text(`Client Name: ${estimate.clientName}`);
-doc.text(`Project Type: ${estimate.projectType}`);
-doc.text(`Tech Stack: ${estimate.techStack}`);
-doc.text(`Total Cost: ₹${estimate.totalCost}`);
-doc.text(`Paid By: ${accountantEmail}`);
-doc.text(`Payment Date: ${new Date().toLocaleString()}`);
-
-doc.moveDown();
-
-// ✅ Add image from memory (Multer buffer)
-doc.fontSize(14).text("Payment Proof Image:", { underline: true });
-doc.moveDown(0.5);
-doc.image(file.buffer, {
-  fit: [250, 250],
-  align: "center",
-  valign: "center",
-  // format: 'png' // optional if needed
-});
-
-doc.end();
-
-await new Promise((resolve) => doc.on("end", resolve));
-
-const pdfBuffer = pdfBufferStream.getContents();
-if (!pdfBuffer) {
-  return res.status(500).json({
-    success: false,
-    message: "Failed to generate PDF buffer",
-  });
-}
-
-// ✅ Upload PDF directly to Vercel Blob
-const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
+    const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer);
 
     // ✅ Update DB
     estimate.paymentImage = paymentImageUrl;
@@ -519,13 +593,13 @@ const pdfUrl = await uploadToVercelBlob(`payment_${estimate._id}.pdf`, pdfBuffer
     estimate.paymentRequest = "PaymentDone";
     await estimate.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Payment completed and receipt generated successfully.",
       data: estimate,
     });
   } catch (error) {
     console.error("Error completing payment:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
