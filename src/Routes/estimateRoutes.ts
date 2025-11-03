@@ -24,6 +24,8 @@
 
 // export default router;
 import express from "express";
+import bodyParser from "body-parser";
+
 import {
   addEstimate,
   completePayment,
@@ -38,6 +40,7 @@ import { verifyAdmin, verifyToken } from "../Middleware/verifyToken";
 import { upload } from "../upload";
 
 const router = express.Router();
+router.use(bodyParser.json());
 
 // ✅ Basic routes
 router.post("/add", verifyToken, addEstimate);
